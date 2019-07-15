@@ -1,0 +1,3 @@
+[console_scripts]
+PLWNGraphBuilder = PLWNGraphBuilder.main:main
+

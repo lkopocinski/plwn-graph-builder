@@ -1,0 +1,14 @@
+setup.py
+PLWNGraphBuilder/__init__.py
+PLWNGraphBuilder/main.py
+PLWNGraphBuilder/plwn_gloss_extractor.py
+PLWNGraphBuilder/plwn_graph.py
+PLWNGraphBuilder.egg-info/PKG-INFO
+PLWNGraphBuilder.egg-info/SOURCES.txt
+PLWNGraphBuilder.egg-info/dependency_links.txt
+PLWNGraphBuilder.egg-info/entry_points.txt
+PLWNGraphBuilder.egg-info/requires.txt
+PLWNGraphBuilder.egg-info/top_level.txt
+PLWNGraphBuilder/vertices/__init__.py
+PLWNGraphBuilder/vertices/lexical_unit.py
+PLWNGraphBuilder/vertices/synset.py

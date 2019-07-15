@@ -1,0 +1,15 @@
+GenerateStats=1
+ShowSQL=0
+Driver=com.mysql.jdbc.Driver
+Url=jdbc:mysql://localhost:3306/wordnet
+User=wordnet
+Password=wordnet
+InitConnections=4
+MaxConnections=5
+WaitIfBusy=1
+CreateSchema=0
+FileDatabase=0
+DirName=
+Dialect=MYSQL
+DBCacheTime=120000
+DBCacheEnable=1
