@@ -24,37 +24,33 @@ class PLWNGraph:
     self._lu_on_vertex_dict = None
 
   def _get_lu_dict(self, comment=False):
-    '''
+    """
     {lu_id_1: lu_object_1, lu_id_2: lu_object_2, ..., lu_id_N: lu_object_N}
     {..., 46469: <PLWNGraphBuilder.lexical_unit.LexicalUnit instance at 0x47a4878>, ...}
-    '''
+    """
     lu_dict = {}
 
-    sql_query = 'SELECT DISTINCT id, lemma, domain, pos, variant, comment ' \
-                'FROM lexicalunit;'
+    try:
+      with self.dbconnection.cursor() as cursor:
+        sql_query = 'SELECT DISTINCT id, lemma, domain, pos, variant, comment FROM lexicalunit;'
+        cursor.execute(sql_query)
 
-    cursor = self.dbconnection.cursor()
-    cursor.execute(sql_query)
+        for row in cursor.fetchall():
+          lu = LexicalUnit(
+            lu_id = row['id'],
+            lemma = row['lemma'],
+            pos = row['pos'],
+            domain = row['domain'],
+            variant = row['variant']
+          )
 
-    for row in cursor.fetchall():
-      lu_id = int(row[0])
-      lu_lemma = str(row[1].encode('utf-8'))
-      lu_domain = int(row[2])
-      lu_pos = int(row[3])
-      lu_variant = int(row[4])
+          if lu.lu_id not in lu_dict:
+            lu_dict[lu.lu_id] = lu
+          else:
+            print(f'Multiple lexical unit has the same indetifier {lu.lu_id}', file=sys.stderr)
+    except Exception as e:
+      print(e)
 
-      lu_comment = str(row[5].encode('utf-8')) if comment else ''
-
-      lu = LexicalUnit(
-        lu_id, lu_lemma, lu_pos, lu_domain, lu_variant, comment=lu_comment
-      )
-
-      if lu_id not in lu_dict:
-        lu_dict[lu_id] = lu
-      else:
-        print >> sys.stderr, 'W bazie danych Slowosieci powotrzyl sie', \
-                             'identyfikator dla roznych jednostek leksykalnych!', \
-                             '(' + lu_id + ')'
     return lu_dict
 
   def _get_syn_dict(self):
@@ -230,22 +226,22 @@ class PLWNGraph:
     print >> sys.stderr, 'Done!'
 
   def save_graphs(self, out_graphs_file):
-    print >> sys.stderr, 'Save syn graph to file...',
+    print('Save syn graph to file...', end=' ', file=sys.stderr)
     path_to_syn_graph = out_graphs_file + '_syn.xml.gz'
     self.syn_G.save(path_to_syn_graph)
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)
 
-    print >> sys.stderr, 'Save lu graph to file...',
+    print('Save lu graph to file...', end=' ', file=sys.stderr)
     path_to_lu_graph = out_graphs_file + '_lu.xml.gz'
     self.lu_G.save(path_to_lu_graph)
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)
 
   def load_syn_graph(self, in_syn_graph_file):
-    print >> sys.stderr, 'Load syn graph from file...',
+    print('Load syn graph from file...', end=' ', file=sys.stderr)
     self.syn_G = load_graph(in_syn_graph_file)
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)
 
   def load_lu_graph(self, in_lu_graph_file):
-    print >> sys.stderr, 'Load lu graph from file...',
+    print('Load lu graph from file...', end=' ', file=sys.stderr)
     self.lu_G = load_graph(in_lu_graph_file)
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)

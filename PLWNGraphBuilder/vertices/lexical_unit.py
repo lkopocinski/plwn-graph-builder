@@ -8,19 +8,17 @@ class LexicalUnit:
         "verb_en", "noun_en", "adverb_en", "adjective_en",
     ]
 
-    def __init__(self, lu_id, lemma, pos, domain, variant, lexicon=None,
-                 comment=""):
+    def __init__(self, lu_id, lemma, pos, domain, variant, lexicon=None):
         self.lu_id = lu_id
         self.lemma = lemma
         self.pos = pos
         self.domain = domain
         self.variant = variant
         self.lexicon = lexicon
-        self.comment = comment
 
     def _fields(self):
         fields = OrderedDict([
-            ("lu_id", self.lu_id),
+            ("lu_id", self.id),
             ("lemma", self._stringify(self.lemma)),
             ("pos", self.pos),
             ("domain", self.domain),

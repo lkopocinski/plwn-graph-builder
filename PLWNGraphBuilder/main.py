@@ -1,9 +1,8 @@
 import sys
 import argcomplete, argparse
 
-from npsemrel.carrot.db import db
-
-from .plwn_graph import PLWNGraph
+from database import DB
+from plwn_graph import PLWNGraph
 
 
 def make_parser():
@@ -32,13 +31,14 @@ def main(argv=None):
         PLWN_G.load_lu_graph(args.in_lu_graph_file)
 
     if not args.in_syn_graph_file and not args.in_lu_graph_file:
-        print('Connecting to DB...', end=' ', file=sys.stderr)
-        dbcon = db.DB()
-        dbconnection = dbcon.connect(args.db_config)
+        print('Connecting to DB...', file=sys.stderr)
+        db = DB()
+        dbconnection = db.connect(args.db_config)
         if not dbconnection:
             print('Cannot connect to DB!', file=sys.stderr)
             exit(1)
-        print(' Done!', file=sys.stderr)
+
+        print('Done!', file=sys.stderr)
 
         PLWN_G.build_graphs(dbconnection)
         if args.out_graphs_file:

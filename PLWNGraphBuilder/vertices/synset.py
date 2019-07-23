@@ -13,15 +13,12 @@ class Synset:
         ])
 
     @staticmethod
-    def _stringify_set(units, method=repr):
-        if units is None:
-            return "None"
-        return "'" + ", ".join(repr(unit) for unit in units) + "'"
+    def _stringify_set(units):
+        return f"'{', '.join(repr(unit) for unit in units)}'" if units else "None"
 
     def __repr__(self):
         return "<{}({})>".format(type(self).__name__, ", ".join(
-            "{}={}".format(k, v) for (k, v) in self._fields().items()))
+            "{}={}".format(k, v) for (k, v) in list(self._fields().items())))
 
     def __str__(self):
-        return '{}: {}'.format(
-            self.synset_id, self._stringify_set(self.lu_set, str))
+        return f'{self.synset_id}: {self._stringify_set(self.lu_set, str)}'
