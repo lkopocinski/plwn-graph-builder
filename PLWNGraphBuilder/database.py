@@ -49,7 +49,3 @@ class DB:
                 config_dict[key] = value.strip()
 
         return config_dict
-
-if __name__ == '__main__':
-    db = DB()
-    connection = db.connect('../cfg/connection.txt')

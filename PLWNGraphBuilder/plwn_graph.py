@@ -47,59 +47,55 @@ class PLWNGraph:
           if lu.lu_id not in lu_dict:
             lu_dict[lu.lu_id] = lu
           else:
-            print(f'Multiple lexical unit has the same indetifier {lu.lu_id}', file=sys.stderr)
+            print(f'Multiple lexical unit has the same indetifier {lu.lu_id}.', file=sys.stderr)
     except Exception as e:
       print(e)
 
     return lu_dict
 
   def _get_syn_dict(self):
-    '''
+    """
     {syn_id_1: syn_object_1, syn_id_2: syn_object_2, ..., syn_id_N: syn_object_N}
     {..., 30421: <PLWNGraphBuilder.synset.Synset instance at 0x82b1170>, ...}
-    '''
+    """
     syn_dict = {}
 
-    sql_query = 'SELECT DISTINCT id ' \
-                'FROM synset;'
+    try:
+      with self.dbconnection.cursor() as cursor:
+        sql_query = 'SELECT DISTINCT id FROM synset;'
+        cursor.execute(sql_query)
 
-    cursor = self.dbconnection.cursor()
-    cursor.execute(sql_query)
+        for row in cursor.fetchall():
+          synset_id = row['id']
+          lu_set = self._get_lu_set(synset_id)
 
-    for row in cursor.fetchall():
-      synset_id = int(row[0])
-
-      lu_set = set()
-      lu_set = self._get_lu_set(synset_id)
-
-      syn = Synset(synset_id, lu_set)
-      syn_dict[synset_id] = syn
+          syn = Synset(synset_id, lu_set)
+          syn_dict[synset_id] = syn
+    except Exception as e:
+      print(e)
 
     return syn_dict
 
   def _get_lu_set(self, synset_id):
-    '''
-    Dla podanego na wejsciu identyfikatora synsetu
-    zwraca zbior obiektow jednostek leksykalnych,
-    ktore sie w nim zawieraja.
-    '''
+    """
+    For given sysnet id returns a set of lexical units object belongs to synset.
+    """
     lu_set = set()
 
-    sql_query = 'SELECT DISTINCT LEX_ID ' \
-                'FROM unitandsynset ' \
-                'WHERE SYN_ID=' + str(synset_id) + ';'
+    try:
+      with self.dbconnection.cursor() as cursor:
+        sql_query = f'SELECT DISTINCT LEX_ID FROM unitandsynset WHERE SYN_ID={str(synset_id)};'
+        cursor.execute(sql_query)
 
-    cursor = self.dbconnection.cursor()
-    cursor.execute(sql_query)
+        for row in cursor.fetchall():
+          lu_id = row['LEX_ID']
 
-    for row in cursor.fetchall():
-      lu_id = int(row[0])
-
-      if lu_id in self._lu_dict:
-        lu_set.add(self._lu_dict[lu_id])
-      else:
-        print >> sys.stderr, 'W tabeli lexicalunit brakuje jednostki leksykalnej', lu_id, \
-                             ', ktora pojawila sie w tabeli unitandsynset!'
+          if lu_id in self._lu_dict:
+            lu_set.add(self._lu_dict[lu_id])
+          else:
+            print(f'A lexical unit {lu_id} which appears in unitandsynset table is missing in lexicalunit table.', file=sys.stderr)
+    except Exception as e:
+      print(e)
 
     return lu_set
 
@@ -196,8 +192,8 @@ class PLWNGraph:
       if child_id in self._lu_on_vertex_dict:
         v_child_id = self._lu_on_vertex_dict[child_id]
       else:
-        print >> sys.stderr, 'Synset dziecko', child_id, 'pojawil sie w tabeli ' \
-                             'lexicalrelation, a brakuje go w tabeli lexicalunit!'
+        print('Synset dziecko', child_id, 'pojawil sie w tabeli ' \
+                             'lexicalrelation, a brakuje go w tabeli lexicalunit!')
         continue
 
       e = self.lu_G.add_edge(v_parent_id, v_child_id)
@@ -211,37 +207,37 @@ class PLWNGraph:
     self._lu_dict = self._get_lu_dict()
     self._syn_dict = self._get_syn_dict()
 
-    print >> sys.stderr, 'Add syn vertices...',
+    print('Add syn vertices...', file=sys.stderr)
     self._add_syn_vertices()
-    print >> sys.stderr, 'Done!'
-    print >> sys.stderr, 'Add lu vertices...',
+    print('Done!', file=sys.stderr)
+    print('Add lu vertices...', file=sys.stderr)
     self._add_lu_vertices()
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)
 
-    print >> sys.stderr, 'Add syn edges...',
+    print('Add syn edges...', file=sys.stderr)
     self._add_syn_edges()
-    print >> sys.stderr, 'Done!'
-    print >> sys.stderr, 'Add lu edges...',
+    print('Done!', file=sys.stderr)
+    print('Add lu edges...', file=sys.stderr)
     self._add_lu_edges()
-    print >> sys.stderr, 'Done!'
+    print('Done!', file=sys.stderr)
 
   def save_graphs(self, out_graphs_file):
-    print('Save syn graph to file...', end=' ', file=sys.stderr)
+    print('Save syn graph to file...', file=sys.stderr)
     path_to_syn_graph = out_graphs_file + '_syn.xml.gz'
     self.syn_G.save(path_to_syn_graph)
     print('Done!', file=sys.stderr)
 
-    print('Save lu graph to file...', end=' ', file=sys.stderr)
+    print('Save lu graph to file...', file=sys.stderr)
     path_to_lu_graph = out_graphs_file + '_lu.xml.gz'
     self.lu_G.save(path_to_lu_graph)
     print('Done!', file=sys.stderr)
 
   def load_syn_graph(self, in_syn_graph_file):
-    print('Load syn graph from file...', end=' ', file=sys.stderr)
+    print('Load syn graph from file...', file=sys.stderr)
     self.syn_G = load_graph(in_syn_graph_file)
     print('Done!', file=sys.stderr)
 
   def load_lu_graph(self, in_lu_graph_file):
-    print('Load lu graph from file...', end=' ', file=sys.stderr)
+    print('Load lu graph from file...', file=sys.stderr)
     self.lu_G = load_graph(in_lu_graph_file)
     print('Done!', file=sys.stderr)
