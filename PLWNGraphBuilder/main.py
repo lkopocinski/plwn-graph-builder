@@ -3,12 +3,11 @@ import argcomplete, argparse
 
 from npsemrel.carrot.db import db
 
-import plwn_graph
-from plwn_graph import PLWNGraph
+from .plwn_graph import PLWNGraph
 
 
 def make_parser():
-    desc = 'PLWN graph builder...'
+    desc = 'PLWN graph builder.'
 
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-d', '--db-config', dest='db_config', required=True)
@@ -33,42 +32,17 @@ def main(argv=None):
         PLWN_G.load_lu_graph(args.in_lu_graph_file)
 
     if not args.in_syn_graph_file and not args.in_lu_graph_file:
-        print >> sys.stderr, 'Connecting to DB...',
+        print('Connecting to DB...', end=' ', file=sys.stderr)
         dbcon = db.DB()
         dbconnection = dbcon.connect(args.db_config)
         if not dbconnection:
-            print >> sys.stderr, 'Cannot connect to DB!'
+            print('Cannot connect to DB!', file=sys.stderr)
             exit(1)
-        print >> sys.stderr, ' Done!'
+        print(' Done!', file=sys.stderr)
 
         PLWN_G.build_graphs(dbconnection)
         if args.out_graphs_file:
             PLWN_G.save_graphs(args.out_graphs_file)
-
-    '''
-    if PLWN_G.syn_G:
-      print 'SYNSET GRAPH:'
-      for v in PLWN_G.syn_G.vertices():
-        print v, 'Synset:', PLWN_G.syn_G.vertex_properties["synset"][v].synset_id,
-        for lu in PLWN_G.syn_G.vertex_properties["synset"][v].lu_set:
-          print 'LU:', lu.lu_id, lu.lemma, lu.pos, lu.domain, lu.variant,
-        print
-      
-      for e in PLWN_G.syn_G.edges():
-        print e, PLWN_G.syn_G.edge_properties["rel_id"][e]
-  
-    if PLWN_G.lu_G:
-      print 'LU GRAPH:'
-      for v in PLWN_G.lu_G.vertices():
-        print v, 'LU:', PLWN_G.lu_G.vertex_properties["lu"][v].lu_id, \
-                        PLWN_G.lu_G.vertex_properties["lu"][v].lemma, \
-                        PLWN_G.lu_G.vertex_properties["lu"][v].pos, \
-                        PLWN_G.lu_G.vertex_properties["lu"][v].domain, \
-                        PLWN_G.lu_G.vertex_properties["lu"][v].variant
-      
-      for e in PLWN_G.lu_G.edges():
-        print e, PLWN_G.lu_G.edge_properties["rel_id"][e]
-    '''
 
 
 if __name__ == '__main__':
