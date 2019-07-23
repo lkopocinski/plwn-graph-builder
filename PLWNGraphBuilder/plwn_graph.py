@@ -119,83 +119,76 @@ class PLWNGraph:
     self._lu_to_vertex_dict = {}
 
     vertex_prop = self.lu_G.new_vertex_property('python::object')
-    for lu_id, lu in self._lu_dict.iteritems():
+    for lu_id, lu in self._lu_dict.items():
       vertex = self.lu_G.add_vertex()
       vertex_prop[vertex] = lu
       self._lu_to_vertex_dict[lu_id] = vertex
 
     self.lu_G.vertex_properties['lu'] = vertex_prop
 
-  # Dodawanie krawedzi do grafow.
   def _add_syn_edges(self):
-    e_rel_id = self.syn_G.new_edge_property("int")
+    edge_prop_rel_id = self.syn_G.new_edge_property('int')
 
-    sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID ' \
-                'FROM synsetrelation;'
+    try:
+      with self.dbconnection.cursor() as cursor:
+        sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID FROM synsetrelation;'
+        cursor.execute(sql_query)
 
-    cursor = self.dbconnection.cursor()
-    cursor.execute(sql_query)
+        for row in cursor.fetchall():
+          parent_id = row['PARENT_ID']
+          child_id = row['CHILD_ID']
+          rel_id = row['REL_ID']
 
-    for row in cursor.fetchall():
-      parent_id = int(row[0])
-      child_id = int(row[1])
-      rel_id = int(row[2])
+          if parent_id in self._syn_to_vertex_dict:
+            vertex_parent_id = self._syn_to_vertex_dict[parent_id]
+          else:
+            print(f'A parent sysnet {parent_id} appears in synsetrelation table but is missing in synset table.')
+            continue
 
-      v_parent_id = None
-      if parent_id in self._syn_to_vertex_dict:
-        v_parent_id = self._syn_to_vertex_dict[parent_id]
-      else:
-        print >> sys.stderr, 'Synset rodzic', parent_id, 'pojawil sie w tabeli ' \
-                             'synsetrelation, a brakuje go w tabeli synset!'
-        continue
+          if child_id in self._syn_to_vertex_dict:
+            vertex_child_id = self._syn_to_vertex_dict[child_id]
+          else:
+            print(f'A child sysnet {child_id} appears in synsetrelation table but is missing in synset table.')
+            continue
 
-      v_child_id = None
-      if child_id in self._syn_to_vertex_dict:
-        v_child_id = self._syn_to_vertex_dict[child_id]
-      else:
-        print >> sys.stderr, 'Synset dziecko', child_id, 'pojawil sie w tabeli ' \
-                             'synsetrelation, a brakuje go w tabeli synset!'
-        continue
+          edge = self.syn_G.add_edge(vertex_parent_id, vertex_child_id)
+          edge_prop_rel_id[edge] = rel_id
 
-      e = self.syn_G.add_edge(v_parent_id, v_child_id)
-      e_rel_id[e] = rel_id
-
-    self.syn_G.edge_properties["rel_id"] = e_rel_id
+        self.syn_G.edge_properties['rel_id'] = edge_prop_rel_id
+    except Exception as e:
+      print(e)
 
   def _add_lu_edges(self):
-    e_rel_id = self.lu_G.new_edge_property("int")
+    edge_prop_rel_id = self.lu_G.new_edge_property("int")
 
-    sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID ' \
-                'FROM lexicalrelation;'
+    try:
+      with self.dbconnection.cursor() as cursor:
+        sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID FROM lexicalrelation;'
+        cursor.execute(sql_query)
 
-    cursor = self.dbconnection.cursor()
-    cursor.execute(sql_query)
+        for row in cursor.fetchall():
+          parent_id = row['PARENT_ID']
+          child_id = row['CHILD_ID']
+          rel_id = row['REL_ID']
 
-    for row in cursor.fetchall():
-      parent_id = int(row[0])
-      child_id = int(row[1])
-      rel_id = int(row[2])
+          if parent_id in self._lu_to_vertex_dict:
+            vertex_parent_id = self._lu_to_vertex_dict[parent_id]
+          else:
+            print(f'A parent lexical unit {parent_id} appears in synsetrelation table but is missing in unitandsynset table.')
+            continue
 
-      v_parent_id = None
-      if parent_id in self._lu_to_vertex_dict:
-        v_parent_id = self._lu_to_vertex_dict[parent_id]
-      else:
-        print >> sys.stderr, 'Synset rodzic', parent_id, 'pojawil sie w tabeli ' \
-                             'lexicalrelation, a brakuje go w tabeli lexicalunit!'
-        continue
+          if child_id in self._lu_to_vertex_dict:
+            vertex_child_id = self._lu_to_vertex_dict[child_id]
+          else:
+            print(f'A child lexical unit {child_id} appears in synsetrelation table but is missing in unitandsynset table.')
+            continue
 
-      v_child_id = None
-      if child_id in self._lu_to_vertex_dict:
-        v_child_id = self._lu_to_vertex_dict[child_id]
-      else:
-        print('Synset dziecko', child_id, 'pojawil sie w tabeli ' \
-                             'lexicalrelation, a brakuje go w tabeli lexicalunit!')
-        continue
+          edge = self.lu_G.add_edge(vertex_parent_id, vertex_child_id)
+          edge_prop_rel_id[edge] = rel_id
 
-      e = self.lu_G.add_edge(v_parent_id, v_child_id)
-      e_rel_id[e] = rel_id
-
-    self.lu_G.edge_properties["rel_id"] = e_rel_id
+        self.lu_G.edge_properties["rel_id"] = edge_prop_rel_id
+    except Exception as e:
+      print(e)
 
   def build_graphs(self, dbconnection):
     self.dbconnection = dbconnection
