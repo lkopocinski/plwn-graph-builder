@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-
 import sys
 
-from PLWNGraphBuilder.vertices.lexical_unit import LexicalUnit
-from PLWNGraphBuilder.vertices.synset import Synset
+from vertices.lexical_unit import LexicalUnit
+from vertices.synset import Synset
 
 from graph_tool import Graph, load_graph
-
 
 
 class PLWNGraph:
@@ -20,8 +17,8 @@ class PLWNGraph:
     self._lu_dict = None
     self._syn_dict = None
 
-    self._syn_on_vertex_dict = None
-    self._lu_on_vertex_dict = None
+    self._syn_to_vertex_dict = None
+    self._lu_to_vertex_dict = None
 
   def _get_lu_dict(self, comment=False):
     """
@@ -99,36 +96,35 @@ class PLWNGraph:
 
     return lu_set
 
-  # Dodawanie wierzcholkow do grafow.
   def _add_syn_vertices(self):
-    '''
+    """
     {synset_id_1: vertex_id_1, synset_id_2: vertex_id_2, ..., synset_id_N: vertex_id_N}
     {..., 10: 0, 11: 1, ...}
-    '''
-    self._syn_on_vertex_dict = {}
+    """
+    self._syn_to_vertex_dict = {}
 
-    v_synset = self.syn_G.new_vertex_property("python::object")
-    for synset_id, syn in self._syn_dict.iteritems():
-      v = self.syn_G.add_vertex()
-      v_synset[v] = syn
-      self._syn_on_vertex_dict[synset_id] = v
+    vertex_prop = self.syn_G.new_vertex_property('python::object')
+    for synset_id, synset in self._syn_dict.items():
+      vertex = self.syn_G.add_vertex()
+      vertex_prop[vertex] = synset
+      self._syn_to_vertex_dict[synset_id] = vertex
 
-    self.syn_G.vertex_properties["synset"] = v_synset
+    self.syn_G.vertex_properties['synset'] = vertex_prop
 
   def _add_lu_vertices(self):
     '''
     {lu_id_1: vertex_id_1,lu_id_2: vertex_id_2, ..., lu_id_N: vertex_id_N}
     {..., 11: 0, 12: 1, ...}
     '''
-    self._lu_on_vertex_dict = {}
+    self._lu_to_vertex_dict = {}
 
-    v_lu = self.lu_G.new_vertex_property("python::object")
+    vertex_prop = self.lu_G.new_vertex_property('python::object')
     for lu_id, lu in self._lu_dict.iteritems():
-      v = self.lu_G.add_vertex()
-      v_lu[v] = lu
-      self._lu_on_vertex_dict[lu_id] = v
+      vertex = self.lu_G.add_vertex()
+      vertex_prop[vertex] = lu
+      self._lu_to_vertex_dict[lu_id] = vertex
 
-    self.lu_G.vertex_properties["lu"] = v_lu
+    self.lu_G.vertex_properties['lu'] = vertex_prop
 
   # Dodawanie krawedzi do grafow.
   def _add_syn_edges(self):
@@ -146,16 +142,16 @@ class PLWNGraph:
       rel_id = int(row[2])
 
       v_parent_id = None
-      if parent_id in self._syn_on_vertex_dict:
-        v_parent_id = self._syn_on_vertex_dict[parent_id]
+      if parent_id in self._syn_to_vertex_dict:
+        v_parent_id = self._syn_to_vertex_dict[parent_id]
       else:
         print >> sys.stderr, 'Synset rodzic', parent_id, 'pojawil sie w tabeli ' \
                              'synsetrelation, a brakuje go w tabeli synset!'
         continue
 
       v_child_id = None
-      if child_id in self._syn_on_vertex_dict:
-        v_child_id = self._syn_on_vertex_dict[child_id]
+      if child_id in self._syn_to_vertex_dict:
+        v_child_id = self._syn_to_vertex_dict[child_id]
       else:
         print >> sys.stderr, 'Synset dziecko', child_id, 'pojawil sie w tabeli ' \
                              'synsetrelation, a brakuje go w tabeli synset!'
@@ -181,16 +177,16 @@ class PLWNGraph:
       rel_id = int(row[2])
 
       v_parent_id = None
-      if parent_id in self._lu_on_vertex_dict:
-        v_parent_id = self._lu_on_vertex_dict[parent_id]
+      if parent_id in self._lu_to_vertex_dict:
+        v_parent_id = self._lu_to_vertex_dict[parent_id]
       else:
         print >> sys.stderr, 'Synset rodzic', parent_id, 'pojawil sie w tabeli ' \
                              'lexicalrelation, a brakuje go w tabeli lexicalunit!'
         continue
 
       v_child_id = None
-      if child_id in self._lu_on_vertex_dict:
-        v_child_id = self._lu_on_vertex_dict[child_id]
+      if child_id in self._lu_to_vertex_dict:
+        v_child_id = self._lu_to_vertex_dict[child_id]
       else:
         print('Synset dziecko', child_id, 'pojawil sie w tabeli ' \
                              'lexicalrelation, a brakuje go w tabeli lexicalunit!')
@@ -207,37 +203,21 @@ class PLWNGraph:
     self._lu_dict = self._get_lu_dict()
     self._syn_dict = self._get_syn_dict()
 
-    print('Add syn vertices...', file=sys.stderr)
     self._add_syn_vertices()
-    print('Done!', file=sys.stderr)
-    print('Add lu vertices...', file=sys.stderr)
     self._add_lu_vertices()
-    print('Done!', file=sys.stderr)
 
-    print('Add syn edges...', file=sys.stderr)
     self._add_syn_edges()
-    print('Done!', file=sys.stderr)
-    print('Add lu edges...', file=sys.stderr)
     self._add_lu_edges()
-    print('Done!', file=sys.stderr)
 
-  def save_graphs(self, out_graphs_file):
-    print('Save syn graph to file...', file=sys.stderr)
-    path_to_syn_graph = out_graphs_file + '_syn.xml.gz'
+  def save_graphs(self, graphs_file):
+    path_to_syn_graph = f"{graphs_file}_syn.xml.gz'"
     self.syn_G.save(path_to_syn_graph)
-    print('Done!', file=sys.stderr)
 
-    print('Save lu graph to file...', file=sys.stderr)
-    path_to_lu_graph = out_graphs_file + '_lu.xml.gz'
+    path_to_lu_graph = f"{graphs_file}_lu.xml.gz"
     self.lu_G.save(path_to_lu_graph)
-    print('Done!', file=sys.stderr)
 
-  def load_syn_graph(self, in_syn_graph_file):
-    print('Load syn graph from file...', file=sys.stderr)
-    self.syn_G = load_graph(in_syn_graph_file)
-    print('Done!', file=sys.stderr)
+  def load_syn_graph(self, syn_graph_file):
+    self.syn_G = load_graph(syn_graph_file)
 
-  def load_lu_graph(self, in_lu_graph_file):
-    print('Load lu graph from file...', file=sys.stderr)
-    self.lu_G = load_graph(in_lu_graph_file)
-    print('Done!', file=sys.stderr)
+  def load_lu_graph(self, lu_graph_file):
+    self.lu_G = load_graph(lu_graph_file)
