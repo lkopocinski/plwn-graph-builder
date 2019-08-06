@@ -203,7 +203,7 @@ class PLWNGraph:
     self._add_lu_edges()
 
   def save_graphs(self, graphs_file):
-    path_to_syn_graph = f"{graphs_file}_syn.xml.gz'"
+    path_to_syn_graph = f"{graphs_file}_syn.xml.gz"
     self.syn_G.save(path_to_syn_graph)
 
     path_to_lu_graph = f"{graphs_file}_lu.xml.gz"

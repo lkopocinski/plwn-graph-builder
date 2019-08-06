@@ -31,7 +31,6 @@ def main(argv=None):
         PLWN_G.load_lu_graph(args.in_lu_graph_file)
 
     if not args.in_syn_graph_file and not args.in_lu_graph_file:
-        print('Connecting to DB...', file=sys.stderr)
         db = DB()
         dbconnection = db.connect(args.db_config)
         if not dbconnection:
