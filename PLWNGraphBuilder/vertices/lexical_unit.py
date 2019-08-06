@@ -1,12 +1,14 @@
-from collections import OrderedDict
-
-
 class LexicalUnit:
-
-    POS_STR = [
-        "verb", "noun", "adverb", "adjective",
-        "verb_en", "noun_en", "adverb_en", "adjective_en",
-    ]
+    POS_STR_DICT = {
+        1: 'verb',
+        2: 'noun',
+        3: 'adverb',
+        4: 'adjective',
+        5: 'verb_en',
+        6: 'noun_en',
+        7: 'adverb_en',
+        8: 'adjective_en'
+    }
 
     def __init__(self, lu_id, lemma, pos, domain, variant, lexicon=None):
         self.lu_id = lu_id
@@ -16,32 +18,16 @@ class LexicalUnit:
         self.variant = variant
         self.lexicon = lexicon
 
-    def _fields(self):
-        fields = OrderedDict([
-            ("lu_id", self.lu_id),
-            ("lemma", self._stringify(self.lemma)),
-            ("pos", self.pos),
-            ("domain", self.domain),
-            ("variant", self.variant),
-            ("lexicon", self._stringify(self.lexicon)),
-        ])
-        # We still have pickled graphs without comments for whatever reason
-        try:
-            fields["comment"] = self._stringify(self.comment)
-        except AttributeError:
-            pass
-        return fields
-
-    @staticmethod
-    def _stringify(value):
-        if value is None:
-            return "None"
-        return "'" + value.replace("'", "\\'") + "'"
-
     def __repr__(self):
-        return "<{}({})>".format(type(self).__name__, ", ".join(
-            "{}={}".format(k, v) for (k, v) in self._fields().items()))
+        return (f'{self.__class__.__name__}('
+                f'lu_id={self.lu_id}, '
+                f'lemma={str(self.lemma)}, '
+                f'pos={self.pos}, '
+                f'domain={self.domain}, '
+                f'variant={self.variant}, '
+                f'lexicon={self.lexicon})')
 
     def __str__(self):
-        pos = self.POS_STR[self.pos + 1]
-        return "{}:{}:{}".format(self.lemma, pos, self.variant)
+        return (f'{self.lemma}:'
+                f'{self.POS_STR_DICT[self.pos]}:'
+                f'{self.variant}')
