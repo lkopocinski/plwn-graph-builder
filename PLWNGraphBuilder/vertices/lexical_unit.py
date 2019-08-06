@@ -18,7 +18,7 @@ class LexicalUnit:
 
     def _fields(self):
         fields = OrderedDict([
-            ("lu_id", self.id),
+            ("lu_id", self.lu_id),
             ("lemma", self._stringify(self.lemma)),
             ("pos", self.pos),
             ("domain", self.domain),
