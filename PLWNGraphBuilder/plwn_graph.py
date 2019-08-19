@@ -7,209 +7,203 @@ from vertices.synset import Synset
 
 class PLWNGraph:
 
-  def __init__(self):
-    self.dbconnection = None
+    def __init__(self):
+        self.dbconnection = None
 
-    self.syn_G = Graph()
-    self.lu_G = Graph()
+        self.syn_G = Graph()
+        self.lu_G = Graph()
 
-    self._lu_dict = None
-    self._syn_dict = None
+        self._lu_dict = None
+        self._syn_dict = None
 
-    self._syn_to_vertex_dict = None
-    self._lu_to_vertex_dict = None
+        self._syn_to_vertex_dict = None
+        self._lu_to_vertex_dict = None
 
-  def _get_lu_dict(self, comment=False):
-    """
-    {lu_id_1: lu_object_1, lu_id_2: lu_object_2, ..., lu_id_N: lu_object_N}
-    {..., 46469: <PLWNGraphBuilder.lexical_unit.LexicalUnit instance at 0x47a4878>, ...}
-    """
-    lu_dict = {}
+    def load_syn_graph(self, syn_graph_file):
+        self.syn_G = load_graph(syn_graph_file)
 
-    try:
-      with self.dbconnection.cursor() as cursor:
-        sql_query = 'SELECT DISTINCT id, lemma, domain, pos, variant, comment FROM lexicalunit;'
-        cursor.execute(sql_query)
+    def load_lu_graph(self, lu_graph_file):
+        self.lu_G = load_graph(lu_graph_file)
 
-        for row in cursor.fetchall():
-          lu = LexicalUnit(
-            lu_id = row['id'],
-            lemma = row['lemma'],
-            pos = row['pos'],
-            domain = row['domain'],
-            variant = row['variant']
-          )
+    def build_graphs(self, dbconnection):
+        self.dbconnection = dbconnection
 
-          if lu.lu_id not in lu_dict:
-            lu_dict[lu.lu_id] = lu
-          else:
-            print(f'Multiple lexical unit has the same indetifier {lu.lu_id}.', file=sys.stderr)
-    except Exception as e:
-      print(e)
+        self._lu_dict = self._get_lu_dict()
+        self._syn_dict = self._get_syn_dict()
 
-    return lu_dict
+        self._add_syn_vertices()
+        self._add_lu_vertices()
 
-  def _get_syn_dict(self):
-    """
-    {syn_id_1: syn_object_1, syn_id_2: syn_object_2, ..., syn_id_N: syn_object_N}
-    {..., 30421: <PLWNGraphBuilder.synset.Synset instance at 0x82b1170>, ...}
-    """
-    syn_dict = {}
+        self._add_syn_edges()
+        self._add_lu_edges()
 
-    try:
-      with self.dbconnection.cursor() as cursor:
-        sql_query = 'SELECT DISTINCT id FROM synset;'
-        cursor.execute(sql_query)
+    def _get_lu_dict(self):
+        lu_dict = {}
 
-        for row in cursor.fetchall():
-          synset_id = row['id']
-          lu_set = self._get_lu_set(synset_id)
+        try:
+            with self.dbconnection.cursor() as cursor:
+                sql_query = 'SELECT DISTINCT id, lemma, domain, pos, variant, comment FROM lexicalunit;'
+                cursor.execute(sql_query)
 
-          syn = Synset(synset_id, lu_set)
-          syn_dict[synset_id] = syn
-    except Exception as e:
-      print(e)
+                for row in cursor.fetchall():
+                    lu = LexicalUnit(
+                        lu_id=row['id'],
+                        lemma=row['lemma'],
+                        pos=row['pos'],
+                        domain=row['domain'],
+                        variant=row['variant']
+                    )
 
-    return syn_dict
+                    if lu.lu_id not in lu_dict:
+                        lu_dict[lu.lu_id] = lu
+                    else:
+                        print(f'Multiple lexical unit has the same indetifier {lu.lu_id}.', file=sys.stderr)
+        except Exception as e:
+            print(e, file=sys.stderr)
 
-  def _get_lu_set(self, synset_id):
-    """
-    For given sysnet id returns a set of lexical units object belongs to synset.
-    """
-    lu_set = set()
+        return lu_dict
 
-    try:
-      with self.dbconnection.cursor() as cursor:
-        sql_query = f'SELECT DISTINCT LEX_ID FROM unitandsynset WHERE SYN_ID={str(synset_id)};'
-        cursor.execute(sql_query)
+    def _get_syn_dict(self):
+        syn_dict = {}
 
-        for row in cursor.fetchall():
-          lu_id = row['LEX_ID']
+        try:
+            with self.dbconnection.cursor() as cursor:
+                sql_query = 'SELECT DISTINCT id FROM synset;'
+                cursor.execute(sql_query)
 
-          if lu_id in self._lu_dict:
-            lu_set.add(self._lu_dict[lu_id])
-          else:
-            print(f'A lexical unit {lu_id} which appears in unitandsynset table is missing in lexicalunit table.', file=sys.stderr)
-    except Exception as e:
-      print(e)
+                for row in cursor.fetchall():
+                    synset_id = row['id']
+                    lu_set = self._get_lu_set(synset_id)
 
-    return lu_set
+                    synset = Synset(
+                        synset_id=synset_id,
+                        lu_set=lu_set
+                    )
+                    syn_dict[synset_id] = synset
+        except Exception as e:
+            print(e, file=sys.stderr)
 
-  def _add_syn_vertices(self):
-    """
-    {synset_id_1: vertex_id_1, synset_id_2: vertex_id_2, ..., synset_id_N: vertex_id_N}
-    {..., 10: 0, 11: 1, ...}
-    """
-    self._syn_to_vertex_dict = {}
+        return syn_dict
 
-    vertex_prop = self.syn_G.new_vertex_property('python::object')
-    for synset_id, synset in self._syn_dict.items():
-      vertex = self.syn_G.add_vertex()
-      vertex_prop[vertex] = synset
-      self._syn_to_vertex_dict[synset_id] = vertex
+    def _get_lu_set(self, synset_id):
+        lu_set = set()
 
-    self.syn_G.vertex_properties['synset'] = vertex_prop
+        try:
+            with self.dbconnection.cursor() as cursor:
+                sql_query = f'SELECT DISTINCT lex_id FROM unitandsynset WHERE syn_id={str(synset_id)};'
+                cursor.execute(sql_query)
 
-  def _add_lu_vertices(self):
-    '''
-    {lu_id_1: vertex_id_1,lu_id_2: vertex_id_2, ..., lu_id_N: vertex_id_N}
-    {..., 11: 0, 12: 1, ...}
-    '''
-    self._lu_to_vertex_dict = {}
+                for row in cursor.fetchall():
+                    lu_id = row['lex_id']
 
-    vertex_prop = self.lu_G.new_vertex_property('python::object')
-    for lu_id, lu in self._lu_dict.items():
-      vertex = self.lu_G.add_vertex()
-      vertex_prop[vertex] = lu
-      self._lu_to_vertex_dict[lu_id] = vertex
+                    if lu_id in self._lu_dict:
+                        lu_set.add(self._lu_dict[lu_id])
+                    else:
+                        print(
+                            f'A lexical unit {lu_id} which appears in unitandsynset table is missing in lexicalunit table.',
+                            file=sys.stderr)
+        except Exception as e:
+            print(e, file=sys.stderr)
 
-    self.lu_G.vertex_properties['lu'] = vertex_prop
+        return lu_set
 
-  def _add_syn_edges(self):
-    edge_prop_rel_id = self.syn_G.new_edge_property('int')
+    def _add_syn_vertices(self):
+        self._syn_to_vertex_dict = {}
 
-    try:
-      with self.dbconnection.cursor() as cursor:
-        sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID FROM synsetrelation;'
-        cursor.execute(sql_query)
+        vertex_prop = self.syn_G.new_vertex_property('python::object')
+        for synset_id, synset in self._syn_dict.items():
+            vertex = self.syn_G.add_vertex()
+            vertex_prop[vertex] = synset
+            self._syn_to_vertex_dict[synset_id] = vertex
 
-        for row in cursor.fetchall():
-          parent_id = row['PARENT_ID']
-          child_id = row['CHILD_ID']
-          rel_id = row['REL_ID']
+        self.syn_G.vertex_properties['synset'] = vertex_prop
 
-          if parent_id in self._syn_to_vertex_dict:
-            vertex_parent_id = self._syn_to_vertex_dict[parent_id]
-          else:
-            print(f'A parent sysnet {parent_id} appears in synsetrelation table but is missing in synset table.')
-            continue
+    def _add_lu_vertices(self):
+        self._lu_to_vertex_dict = {}
 
-          if child_id in self._syn_to_vertex_dict:
-            vertex_child_id = self._syn_to_vertex_dict[child_id]
-          else:
-            print(f'A child sysnet {child_id} appears in synsetrelation table but is missing in synset table.')
-            continue
+        vertex_prop = self.lu_G.new_vertex_property('python::object')
+        for lu_id, lu in self._lu_dict.items():
+            vertex = self.lu_G.add_vertex()
+            vertex_prop[vertex] = lu
+            self._lu_to_vertex_dict[lu_id] = vertex
 
-          edge = self.syn_G.add_edge(vertex_parent_id, vertex_child_id)
-          edge_prop_rel_id[edge] = rel_id
+        self.lu_G.vertex_properties['lu'] = vertex_prop
 
-        self.syn_G.edge_properties['rel_id'] = edge_prop_rel_id
-    except Exception as e:
-      print(e)
+    def _add_syn_edges(self):
+        edge_prop_rel_id = self.syn_G.new_edge_property('int')
 
-  def _add_lu_edges(self):
-    edge_prop_rel_id = self.lu_G.new_edge_property("int")
+        try:
+            with self.dbconnection.cursor() as cursor:
+                sql_query = 'SELECT DISTINCT parent_id, child_id, rel_id FROM synsetrelation;'
+                cursor.execute(sql_query)
 
-    try:
-      with self.dbconnection.cursor() as cursor:
-        sql_query = 'SELECT DISTINCT PARENT_ID, CHILD_ID, REL_ID FROM lexicalrelation;'
-        cursor.execute(sql_query)
+                for row in cursor.fetchall():
+                    parent_id = row['parent_id']
+                    child_id = row['child_id']
+                    rel_id = row['rel_id']
 
-        for row in cursor.fetchall():
-          parent_id = row['PARENT_ID']
-          child_id = row['CHILD_ID']
-          rel_id = row['REL_ID']
+                    if parent_id in self._syn_to_vertex_dict:
+                        vertex_parent_id = self._syn_to_vertex_dict[parent_id]
+                    else:
+                        print(
+                            f'A parent sysnet {parent_id} appears in synsetrelation table but is missing in synset table.',
+                            file=sys.stderr)
+                        continue
 
-          if parent_id in self._lu_to_vertex_dict:
-            vertex_parent_id = self._lu_to_vertex_dict[parent_id]
-          else:
-            print(f'A parent lexical unit {parent_id} appears in synsetrelation table but is missing in unitandsynset table.')
-            continue
+                    if child_id in self._syn_to_vertex_dict:
+                        vertex_child_id = self._syn_to_vertex_dict[child_id]
+                    else:
+                        print(
+                            f'A child sysnet {child_id} appears in synsetrelation table but is missing in synset table.',
+                            file=sys.stderr)
+                        continue
 
-          if child_id in self._lu_to_vertex_dict:
-            vertex_child_id = self._lu_to_vertex_dict[child_id]
-          else:
-            print(f'A child lexical unit {child_id} appears in synsetrelation table but is missing in unitandsynset table.')
-            continue
+                    edge = self.syn_G.add_edge(vertex_parent_id, vertex_child_id)
+                    edge_prop_rel_id[edge] = rel_id
 
-          edge = self.lu_G.add_edge(vertex_parent_id, vertex_child_id)
-          edge_prop_rel_id[edge] = rel_id
+                self.syn_G.edge_properties['rel_id'] = edge_prop_rel_id
+        except Exception as e:
+            print(e, file=sys.stderr)
 
-        self.lu_G.edge_properties["rel_id"] = edge_prop_rel_id
-    except Exception as e:
-      print(e)
+    def _add_lu_edges(self):
+        edge_prop_rel_id = self.lu_G.new_edge_property('int')
 
-  def build_graphs(self, dbconnection):
-    self.dbconnection = dbconnection
+        try:
+            with self.dbconnection.cursor() as cursor:
+                sql_query = 'SELECT DISTINCT parent_id, child_id, rel_id FROM lexicalrelation;'
+                cursor.execute(sql_query)
 
-    self._lu_dict = self._get_lu_dict()
-    self._syn_dict = self._get_syn_dict()
+                for row in cursor.fetchall():
+                    parent_id = row['parent_id']
+                    child_id = row['child_id']
+                    rel_id = row['rel_id']
 
-    self._add_syn_vertices()
-    self._add_lu_vertices()
+                    if parent_id in self._lu_to_vertex_dict:
+                        vertex_parent_id = self._lu_to_vertex_dict[parent_id]
+                    else:
+                        print(
+                            f'A parent lexical unit {parent_id} appears in synsetrelation table but is missing in unitandsynset table.',
+                            file=sys.stderr)
+                        continue
 
-    self._add_syn_edges()
-    self._add_lu_edges()
+                    if child_id in self._lu_to_vertex_dict:
+                        vertex_child_id = self._lu_to_vertex_dict[child_id]
+                    else:
+                        print(
+                            f'A child lexical unit {child_id} appears in synsetrelation table but is missing in unitandsynset table.',
+                            file=sys.stderr)
+                        continue
 
-  def save_graphs(self, graphs_file):
-    path_to_syn_graph = f"{graphs_file}_syn.xml.gz"
-    self.syn_G.save(path_to_syn_graph)
+                    edge = self.lu_G.add_edge(vertex_parent_id, vertex_child_id)
+                    edge_prop_rel_id[edge] = rel_id
 
-    path_to_lu_graph = f"{graphs_file}_lu.xml.gz"
-    self.lu_G.save(path_to_lu_graph)
+                self.lu_G.edge_properties['rel_id'] = edge_prop_rel_id
+        except Exception as e:
+            print(e, file=sys.stderr)
 
-  def load_syn_graph(self, syn_graph_file):
-    self.syn_G = load_graph(syn_graph_file)
+    def save_graphs(self, graphs_file):
+        path_to_syn_graph = f"{graphs_file}_syn.xml.gz"
+        self.syn_G.save(path_to_syn_graph)
 
-  def load_lu_graph(self, lu_graph_file):
-    self.lu_G = load_graph(lu_graph_file)
+        path_to_lu_graph = f"{graphs_file}_lu.xml.gz"
+        self.lu_G.save(path_to_lu_graph)
