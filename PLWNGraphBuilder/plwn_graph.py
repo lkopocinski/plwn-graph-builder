@@ -1,9 +1,8 @@
 import sys
 
+from graph_tool import Graph, load_graph
 from vertices.lexical_unit import LexicalUnit
 from vertices.synset import Synset
-
-from graph_tool import Graph, load_graph
 
 
 class PLWNGraph:

@@ -5,10 +5,10 @@ from setuptools import setup
 
 setup(
     name='PLWNGraphBuilder',
-    version='0.1.0',
+    version='1.0.0',
     description='PLWN Graph Builder',
-    author="Marlena Orlińska",
-    author_email="Marlena.Orlinska@pwr.edu.pl",
+    author="Łukasz Kopociński",
+    author_email="lkopocinski@gmail.com",
     packages=[
         'PLWNGraphBuilder',
         'PLWNGraphBuilder.vertices'
