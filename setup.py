@@ -1,26 +1,22 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 from setuptools import setup
 
 setup(
-    name='PLWNGraphBuilder',
-    version='1.0.0',
+    name='plwn_graph_builder',
+    version='1.0',
     description='PLWN Graph Builder',
     author="Łukasz Kopociński",
     author_email="lkopocinski@gmail.com",
     packages=[
-        'PLWNGraphBuilder',
-        'PLWNGraphBuilder.vertices'
+        'plwn_graph_builder',
+        'plwn_graph_builder.vertices'
     ],
     license='',
     entry_points={
         'console_scripts': [
-            'PLWNGraphBuilder = PLWNGraphBuilder.main:main'
+            'plwn_graph_builder = plwn_graph_builder.main:main'
         ]
     },
-    install_requires=[
-        'future',
-        'configargparse',
-    ]
+    python_requires='>=3.6',
 )
