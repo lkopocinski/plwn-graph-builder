@@ -11,9 +11,7 @@ def make_parser():
 
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-d', '--db-config', dest='db_config', required=True)
-    parser.add_argument('-is', '--in-syn-graph-file', dest='in_syn_graph_file', required=False)
-    parser.add_argument('-il', '--in-lu-graph-file', dest='in_lu_graph_file', required=False)
-    parser.add_argument('-o', '--out-graphs-file', dest='out_graphs_file', required=False)
+    parser.add_argument('-o', '--out-graph-file-prefix', dest='out_graph_file_prefix', required=True)
 
     argcomplete.autocomplete(parser)
     return parser
@@ -34,18 +32,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     PLWN_G = PLWNGraph()
-
-    if args.in_syn_graph_file:
-        PLWN_G.load_syn_graph(args.in_syn_graph_file)
-
-    if args.in_lu_graph_file:
-        PLWN_G.load_lu_graph(args.in_lu_graph_file)
-
-    if not args.in_syn_graph_file and not args.in_lu_graph_file:
-        create_new_graphs(args.db_config, PLWN_G)
-
-        if args.out_graphs_file:
-            PLWN_G.save_graphs(args.out_graphs_file)
+    create_new_graphs(args.db_config, PLWN_G)
+    PLWN_G.save_graphs(args.out_graph_file_prefix)
 
 
 if __name__ == '__main__':
