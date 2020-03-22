@@ -15,7 +15,7 @@ setup(
     license='',
     entry_points={
         'console_scripts': [
-            'plwn_graph_builder = plwn_graph_builder.main:main'
+            'plwn_graph_builder=plwn_graph_builder.main:main'
         ]
     },
     python_requires='>=3.6',
