@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Set
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class LexicalUnit:
 @dataclass(frozen=True)
 class Synset:
     synset_id: int
-    lu_set: set
+    lu_set: Set[LexicalUnit]
 
     def __str__(self):
         lus = set(map(str, self.lu_set))
