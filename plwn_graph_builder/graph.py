@@ -1,7 +1,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Set
 
 from graph_tool import Graph, load_graph
 
@@ -68,7 +68,7 @@ class PLWNGraph:
             for row in results
         ]
         synsets_lexical_units = [
-            self._get_lu_set(index)
+            self._get_synsets_lexical_units(index)
             for index in synsets_indices
         ]
         synsets = {
@@ -79,27 +79,21 @@ class PLWNGraph:
 
         return synsets
 
-    def _get_lu_set(self, synset_id):
-        lu_set = set()
+    def _get_synsets_lexical_units(self, synset_id: int) -> Set[LexicalUnit]:
+        query = f'SELECT DISTINCT ' \
+                f'lex_id AS lu_id ' \
+                f'FROM unitandsynset ' \
+                f'WHERE syn_id={synset_id};'
 
-        try:
-            with self._db.cursor() as cursor:
-                sql_query = f'SELECT DISTINCT lex_id FROM unitandsynset WHERE syn_id={str(synset_id)};'
-                cursor.execute(sql_query)
+        results = self._db.execute(query)
+        lexical_units = {
+            self._lu_dict[row.lu_id]
+            for row in results
+            if row.lu_id in self._lu_dict
+        }
+        results.close()
 
-                for row in cursor.fetchall():
-                    lu_id = row['lex_id']
-
-                    if lu_id in self._lu_dict:
-                        lu_set.add(self._lu_dict[lu_id])
-                    else:
-                        print(
-                            f'A lexical unit {lu_id} which appears in unitandsynset table is missing in lexicalunit table.',
-                            file=sys.stderr)
-        except Exception as e:
-            print(e, file=sys.stderr)
-
-        return lu_set
+        return lexical_units
 
 
 def _add_syn_vertices(self):
