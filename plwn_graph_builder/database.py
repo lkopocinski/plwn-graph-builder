@@ -12,7 +12,7 @@ def _parse_config(path: Path) -> Dict:
     return load_yaml(path)
 
 
-def connect(config_path: Path) -> Engine:
+def get_engine(config_path: Path) -> Engine:
     config = _parse_config(config_path)
     url = URL(**config)
     return create_engine(url, echo=True)
