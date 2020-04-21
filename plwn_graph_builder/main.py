@@ -28,7 +28,7 @@ def main(graph_type, db_config, out_path):
         graph_builder = SynsetGraphBuilder(plwn=plwn)
 
     graph = graph_builder.build()
-    graph.save(out_path, fmt="gt")
+    graph.save(out_path, fmt='gt')
 
 
 if __name__ == '__main__':
