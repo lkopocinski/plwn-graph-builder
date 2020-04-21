@@ -2,8 +2,8 @@ from pathlib import Path
 
 import click
 
-from plwn_graph_builder.database import connect
-from plwn_graph_builder.graph import PLWNGraph
+from plwn_graph_builder.graph import LexicalUnitGraphBuilder, SynsetGraphBuilder
+from plwn_graph_builder.plwn import PLWN
 
 
 @click.command()
@@ -16,11 +16,15 @@ from plwn_graph_builder.graph import PLWNGraph
               type=click.Path(exists=True),
               help='Directory for saving created graphs.')
 def main(db_config, output_dir):
-    db = connect(Path(db_config))
+    plwn = PLWN(Path(db_config))
 
-    plwn_graph = PLWNGraph()
-    plwn_graph.build_graphs(db)
-    plwn_graph.save_graphs(output_dir)
+    graph_builder = LexicalUnitGraphBuilder(db=plwn)
+    graph = graph_builder.build()
+    graph.save('plwn_graph_lexical_units.xml.gz')
+
+    graph_builder = SynsetGraphBuilder(db=plwn)
+    graph = graph_builder.build()
+    graph.save('plwn_graph_synset.xml.gz')
 
 
 if __name__ == '__main__':
