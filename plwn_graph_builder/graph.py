@@ -1,224 +1,133 @@
 import logging
-from pathlib import Path
-from typing import Dict, Set
+from abc import ABC, abstractmethod
 
-from graph_tool import Graph, load_graph
+from graph_tool import Graph
 
-from plwn_graph_builder.vertices import LexicalUnit, Synset
+from plwn_graph_builder.plwn import PLWN
 
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 
-class PLWNGraph:
-    SYNSET_PROPERTY_KEY = 'synset'
-    LEXICAL_UNIT_PROPERTY_KEY = 'lu'
-    EDGE_PROPERTY_KEY = 'int'
-    RELATION_PROPERTY_KEY = 'rel_id'
+class GraphBuilder(ABC):
+    EDGE_PROPERTY_TYPE = 'int'
+    VERTEX_PROPERTY_TYPE = 'python::object'
+    RELATION_PROPERTY_KEY = 'relation_id'
 
-    def __init__(self):
-        self._db = None
+    def __init__(self, db: PLWN):
+        self._db = db
+        self._graph = None
 
-        self._synset_G = Graph()
-        self.lexical_units_G = Graph()
+    @abstractmethod
+    def build(self) -> Graph:
+        ...
 
+    @abstractmethod
+    def _add_vertices(self):
+        ...
+
+    @abstractmethod
+    def _add_edges(self):
+        ...
+
+
+class LexicalUnitGraphBuilder(GraphBuilder):
+    LEXICAL_UNIT_PROPERTY_KEY = 'lexical_unit'
+
+    def __init__(self, db: PLWN):
+        super().__init__(db)
         self._lexical_units_dict = None
-        self._synsets_dict = None
+        self._lexical_unit_id_to_vertex_dict = None
+        self._lexical_units_relations = None
 
-        self._synset_to_vertex_dict = None
-        self._lexical_unit_to_vertex_dict = None
+    def build(self) -> Graph:
+        self._graph = Graph()
+        self._lexical_units_dict = self._db.lexical_units()
+        self._lexical_units_relations = self._db.synsets_relations()
 
-    def load_syn_graph(self, syn_graph_file):
-        self._synset_G = load_graph(syn_graph_file)
+        self._add_vertices()
+        self._add_edges()
 
-    def load_lu_graph(self, lu_graph_file):
-        self.lexical_units_G = load_graph(lu_graph_file)
+        return self._graph
 
-    def build_graphs(self, db_connection):
-        self._db = db_connection
+    def _add_vertices(self) -> None:
+        self._lexical_unit_id_to_vertex_dict = {}
 
-        self._lexical_units_dict = self._get_lexical_units()
-        self._synsets_dict = self._get_synsets()
-
-        self._add_synset_vertices()
-        self._add_lexical_units_vertices()
-
-        self._add_synset_edges()
-        self._add_lexical_units_edges()
-
-    def _get_lexical_units(self) -> Dict[int, LexicalUnit]:
-        query = 'SELECT DISTINCT ' \
-                'id AS lu_id, lemma, pos, domain, variant ' \
-                'FROM lexicalunit;'
-
-        results = self._db.execute(query)
-        lexical_units = {
-            row.lu_id: LexicalUnit(**row)
-            for row in results
-        }
-        results.close()
-
-        return lexical_units
-
-    def _get_synsets(self) -> Dict[int, Synset]:
-        query = 'SELECT DISTINCT ' \
-                'id AS synset_id ' \
-                'FROM synset;'
-
-        results = self._db.execute(query)
-        synsets_indices = [
-            row.synset_id
-            for row in results
-        ]
-        synsets_lexical_units = [
-            self._get_synsets_lexical_units(index)
-            for index in synsets_indices
-        ]
-        synsets = {
-            index: lu_set
-            for index, lu_set in zip(synsets_indices, synsets_lexical_units)
-        }
-        results.close()
-
-        return synsets
-
-    def _get_synsets_lexical_units(self, synset_id: int) -> Set[LexicalUnit]:
-        query = f'SELECT DISTINCT ' \
-                f'lex_id AS lu_id ' \
-                f'FROM unitandsynset ' \
-                f'WHERE syn_id={synset_id};'
-
-        results = self._db.execute(query)
-        lexical_units = {
-            self._lexical_units_dict[row.lu_id]
-            for row in results
-            if row.lu_id in self._lexical_units_dict
-        }
-        results.close()
-
-        return lexical_units
-
-    def _add_synset_vertices(self) -> None:
-        self._synset_to_vertex_dict = {}
-
-        vertex_property = self._synset_G.new_vertex_property(
-            'python::object'
+        vertex_property = self._graph.new_vertex_property(
+            self.VERTEX_PROPERTY_TYPE
         )
-        for synset_id, synset in self._synsets_dict.items():
-            vertex = self._synset_G.add_vertex()
-            vertex_property[vertex] = synset
-            self._synset_to_vertex_dict[synset_id] = vertex
+        for lexical_unit_id, lexical_unit in self._lexical_units_dict.items():
+            vertex = self._graph.add_vertex()
+            vertex_property[vertex] = lexical_unit
+            self._lexical_unit_id_to_vertex_dict[lexical_unit_id] = vertex
 
-        self._synset_G.vertex_properties[
-            self.SYNSET_PROPERTY_KEY
-        ] = vertex_property
-
-    def _add_lexical_units_vertices(self) -> None:
-        self._lexical_unit_to_vertex_dict = {}
-
-        vertex_property = self.lexical_units_G.new_vertex_property(
-            'python::object'
-        )
-        for lu_id, lu in self._lexical_units_dict.items():
-            vertex = self.lexical_units_G.add_vertex()
-            vertex_property[vertex] = lu
-            self._lexical_unit_to_vertex_dict[lu_id] = vertex
-
-        self.lexical_units_G.vertex_properties[
+        self._graph.vertex_properties[
             self.LEXICAL_UNIT_PROPERTY_KEY
         ] = vertex_property
 
-    def _add_synset_edges(self) -> None:
-        edge_property_relation_id = self._synset_G.new_edge_property(
-            self.EDGE_PROPERTY_KEY
-        )
+    def _add_edges(self):
+        edge_property = self._graph.new_edge_property(self.EDGE_PROPERTY_TYPE)
 
-        query = 'SELECT DISTINCT ' \
-                'parent_id, child_id, rel_id ' \
-                'FROM synsetrelation;'
-
-        results = self._db.execute(query)
-        for row in results:
-            parent_id, child_id, relation_id = row
-
-            if parent_id in self._synset_to_vertex_dict:
-                vertex_parent_id = self._synset_to_vertex_dict[parent_id]
-            else:
-                logger.warning(
-                    f'Parent synset {parent_id} '
-                    f'appears in synsetrelation table '
-                    f'but is missing in synset table.'
-                )
-                continue
-
-            if child_id in self._synset_to_vertex_dict:
-                vertex_child_id = self._synset_to_vertex_dict[child_id]
-            else:
-                logger.warning(
-                    f'Child sysnet {child_id} '
-                    f'appears in synsetrelation table '
-                    f'but is missing in synset table.',
-                )
-                continue
-
-            edge = self._synset_G.add_edge(
-                vertex_parent_id, vertex_child_id
+        for parent_id, child_id, relation_id in self._lexical_units_relations:
+            parent_vertex = self._lexical_unit_id_to_vertex_dict.get(
+                parent_id, None
             )
-            edge_property_relation_id[edge] = relation_id
+            child_vertex = self._lexical_unit_id_to_vertex_dict(child_id, None)
 
-        self._synset_G.edge_properties[
+            if parent_vertex and child_vertex:
+                edge = self._graph.add_edge(parent_vertex, child_vertex)
+                edge_property[edge] = relation_id
+
+        self._graph.edge_properties[
             self.RELATION_PROPERTY_KEY
-        ] = edge_property_relation_id
+        ] = edge_property
 
-    def _add_lexical_units_edges(self):
-        edge_property_relation_id = self.lexical_units_G.new_edge_property(
-            self.EDGE_PROPERTY_KEY
+
+class SynsetGraphBuilder(GraphBuilder):
+    SYNSET_PROPERTY_KEY = 'synset'
+
+    def __init__(self, db: PLWN):
+        super().__init__(db)
+        self._synsets_dict = None
+        self._synsets_relations = None
+        self._synset_id_to_vertex_dict = None
+
+    def build(self) -> Graph:
+        self._graph = Graph()
+        self._synsets_dict = self._db.synsets()
+        self._synsets_relations = self._db.synsets_relations()
+
+        self._add_vertices()
+        self._add_edges()
+
+        return self._graph
+
+    def _add_vertices(self):
+        self._synset_id_to_vertex_dict = {}
+
+        vertex_property = self._graph.new_vertex_property(
+            self.VERTEX_PROPERTY_TYPE
         )
+        for synset_id, synset in self._synsets_dict.items():
+            vertex = self._graph.add_vertex()
+            vertex_property[vertex] = synset
+            self._synset_id_to_vertex_dict[synset_id] = vertex
 
-        query = 'SELECT DISTINCT ' \
-                'parent_id, child_id, rel_id ' \
-                'FROM lexicalrelation;'
+        self._graph.vertex_properties[
+            self.SYNSET_PROPERTY_KEY
+        ] = vertex_property
 
-        results = self._db.execute(query)
-        for row in results:
-            parent_id, child_id, relation_id = row
+    def _add_edges(self):
+        edge_property = self._graph.new_edge_property(self.EDGE_PROPERTY_TYPE)
 
-            if parent_id in self._lexical_unit_to_vertex_dict:
-                vertex_parent_id = self._lexical_unit_to_vertex_dict[
-                    parent_id
-                ]
-            else:
-                logger.warning(
-                    f'Parent lexical unit {parent_id} '
-                    f'appears in synsetrelation table '
-                    f'but is missing in unitandsynset table.',
-                )
-                continue
+        for parent_id, child_id, relation_id in self._synsets_relations:
+            parent_vertex = self._synset_id_to_vertex_dict.get(parent_id, None)
+            child_vertex = self._synset_id_to_vertex_dict.get(child_id, None)
 
-            if child_id in self._lexical_unit_to_vertex_dict:
-                vertex_child_id = self._lexical_unit_to_vertex_dict[
-                    child_id
-                ]
-            else:
-                logger.warning(
-                    f'Child lexical unit {child_id} '
-                    f'appears in synsetrelation table '
-                    f'but is missing in unitandsynset table.',
-                )
-                continue
+            if parent_vertex and child_vertex:
+                edge = self._graph.add_edge(parent_vertex, child_vertex)
+                edge_property[edge] = relation_id
 
-            edge = self.lexical_units_G.add_edge(
-                vertex_parent_id, vertex_child_id
-            )
-            edge_property_relation_id[edge] = relation_id
-
-        self.lexical_units_G.edge_properties[
+        self._graph.edge_properties[
             self.RELATION_PROPERTY_KEY
-        ] = edge_property_relation_id
-
-    def save_graphs(self, out_dir: Path):
-        synset_graph_path = out_dir / 'plwn_graph_syn.xml.gz'
-        self._synset_G.save(synset_graph_path)
-
-        lu_graph_path = out_dir / 'plwn_graph_lu.xml.gz'
-        self.lexical_units_G.save(lu_graph_path)
+        ] = edge_property
