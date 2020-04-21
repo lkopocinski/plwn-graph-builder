@@ -14,8 +14,8 @@ class GraphBuilder(ABC):
     VERTEX_PROPERTY_TYPE = 'python::object'
     RELATION_PROPERTY_KEY = 'relation_id'
 
-    def __init__(self, db: PLWN):
-        self._db = db
+    def __init__(self, plwn: PLWN):
+        self._plwn = plwn
         self._graph = None
 
     @abstractmethod
@@ -34,16 +34,16 @@ class GraphBuilder(ABC):
 class LexicalUnitGraphBuilder(GraphBuilder):
     LEXICAL_UNIT_PROPERTY_KEY = 'lexical_unit'
 
-    def __init__(self, db: PLWN):
-        super().__init__(db)
+    def __init__(self, plwn: PLWN):
+        super().__init__(plwn)
         self._lexical_units_dict = None
         self._lexical_unit_id_to_vertex_dict = None
         self._lexical_units_relations = None
 
     def build(self) -> Graph:
         self._graph = Graph()
-        self._lexical_units_dict = self._db.lexical_units()
-        self._lexical_units_relations = self._db.synsets_relations()
+        self._lexical_units_dict = self._plwn.lexical_units()
+        self._lexical_units_relations = self._plwn.synsets_relations()
 
         self._add_vertices()
         self._add_edges()
@@ -86,16 +86,16 @@ class LexicalUnitGraphBuilder(GraphBuilder):
 class SynsetGraphBuilder(GraphBuilder):
     SYNSET_PROPERTY_KEY = 'synset'
 
-    def __init__(self, db: PLWN):
-        super().__init__(db)
+    def __init__(self, plwn: PLWN):
+        super().__init__(plwn)
         self._synsets_dict = None
         self._synsets_relations = None
         self._synset_id_to_vertex_dict = None
 
     def build(self) -> Graph:
         self._graph = Graph()
-        self._synsets_dict = self._db.synsets()
-        self._synsets_relations = self._db.synsets_relations()
+        self._synsets_dict = self._plwn.synsets()
+        self._synsets_relations = self._plwn.synsets_relations()
 
         self._add_vertices()
         self._add_edges()
