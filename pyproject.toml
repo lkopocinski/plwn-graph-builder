@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "plwn-graph-builder"
+version = "1.0"
+description = "PLWN graph builder."
+authors = ["Łukasz Kopociński <lkopocinski@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "^7.0"
+sqlalchemy = "^1.3"
+PyYAML = "^5.3"
+
+[tool.poetry.scripts]
+plwn_builder = 'plwn_graph_builder.main:main'
+
+[build-system]
+requires = ["poetry>=1.0.5"]
+build-backend = "poetry.masonry.api"
+
+
