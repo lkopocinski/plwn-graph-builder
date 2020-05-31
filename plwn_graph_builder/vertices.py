@@ -11,19 +11,19 @@ class LexicalUnit:
     variant: int
 
     POS_STR_DICT = {
-        1: 'verb',
-        2: 'noun',
-        3: 'adverb',
-        4: 'adjective',
-        5: 'verb_en',
-        6: 'noun_en',
-        7: 'adverb_en',
-        8: 'adjective_en'
+        1: "verb",
+        2: "noun",
+        3: "adverb",
+        4: "adjective",
+        5: "verb_en",
+        6: "noun_en",
+        7: "adverb_en",
+        8: "adjective_en",
     }
 
     def __str__(self):
         pos = self.POS_STR_DICT[self.pos]
-        return f'{self.lemma}:{pos}:{self.variant}'
+        return f"{self.lemma}:{pos}:{self.variant}"
 
 
 @dataclass(frozen=True)
@@ -34,4 +34,4 @@ class Synset:
     def __str__(self):
         lus = set(map(str, self.lu_set))
         lus = ", ".join(lus)
-        return f'{self.synset_id}: ({lus})'
+        return f"{self.synset_id}: ({lus})"
